@@ -1,5 +1,6 @@
 import { useState } from "react";
 import ToolLayout from "@/components/ToolLayout";
+import { callAI } from "@/lib/ai";
 
 const ResumeSummaryGenerator = () => {
   const [role, setRole] = useState("");
@@ -10,16 +11,14 @@ const ResumeSummaryGenerator = () => {
   const [results, setResults] = useState<string[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const generate = () => {
-    if (!role || !skills) return;
+  const generate = async () => {
+    if (!role && !skills) return;
     setIsLoading(true);
-    setTimeout(() => {
-      setResults([
-        `Results-driven ${role} with ${experience || "several"} years of experience in ${industry || "the industry"}. Skilled in ${skills}, with a proven track record of delivering impactful solutions. ${objective || "Seeking to leverage expertise in a challenging new role."}`,
-        `Dynamic ${role} professional bringing ${experience || "extensive"} years of ${industry || "industry"} experience. Core competencies include ${skills}. ${objective || "Passionate about driving growth and innovation."}`,
-      ]);
-      setIsLoading(false);
-    }, 1500);
+    try {
+      const data = await callAI("generate-resume-summary", { role, experience, skills, industry, objective });
+      setResults(data);
+    } catch { /* handled */ }
+    setIsLoading(false);
   };
 
   return (
@@ -42,23 +41,23 @@ const ResumeSummaryGenerator = () => {
     >
       <div>
         <label className="block text-sm font-medium mb-1.5">Job Role</label>
-        <input className="w-full rounded-lg border bg-background px-3 py-2 text-sm" placeholder="e.g., Software Engineer" value={role} onChange={e => setRole(e.target.value)} />
+        <input className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="e.g., Software Engineer" value={role} onChange={e => setRole(e.target.value)} />
       </div>
       <div>
         <label className="block text-sm font-medium mb-1.5">Years of Experience</label>
-        <input className="w-full rounded-lg border bg-background px-3 py-2 text-sm" placeholder="e.g., 5" value={experience} onChange={e => setExperience(e.target.value)} />
+        <input className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="e.g., 5" value={experience} onChange={e => setExperience(e.target.value)} />
       </div>
       <div>
         <label className="block text-sm font-medium mb-1.5">Key Skills</label>
-        <input className="w-full rounded-lg border bg-background px-3 py-2 text-sm" placeholder="e.g., React, Node.js, AWS" value={skills} onChange={e => setSkills(e.target.value)} />
+        <input className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="e.g., React, Node.js, AWS" value={skills} onChange={e => setSkills(e.target.value)} />
       </div>
       <div>
         <label className="block text-sm font-medium mb-1.5">Industry</label>
-        <input className="w-full rounded-lg border bg-background px-3 py-2 text-sm" placeholder="e.g., FinTech" value={industry} onChange={e => setIndustry(e.target.value)} />
+        <input className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="e.g., FinTech" value={industry} onChange={e => setIndustry(e.target.value)} />
       </div>
       <div>
         <label className="block text-sm font-medium mb-1.5">Career Objective (optional)</label>
-        <input className="w-full rounded-lg border bg-background px-3 py-2 text-sm" placeholder="e.g., Seeking a senior role..." value={objective} onChange={e => setObjective(e.target.value)} />
+        <input className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="e.g., Seeking a senior role..." value={objective} onChange={e => setObjective(e.target.value)} />
       </div>
     </ToolLayout>
   );
