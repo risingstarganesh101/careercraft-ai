@@ -3,8 +3,19 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import Index from "./pages/Index";
+import ToolsIndex from "./pages/ToolsIndex";
+import ResumeBulletGenerator from "./pages/tools/ResumeBulletGenerator";
+import ResumeSummaryGenerator from "./pages/tools/ResumeSummaryGenerator";
+import CoverLetterGenerator from "./pages/tools/CoverLetterGenerator";
+import ColdEmailGenerator from "./pages/tools/ColdEmailGenerator";
+import BlogIndex from "./pages/BlogIndex";
+import BlogPost from "./pages/BlogPost";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Terms from "./pages/Terms";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -16,7 +27,17 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/tools" element={<ToolsIndex />} />
+          <Route path="/tools/resume-bullet-generator" element={<ResumeBulletGenerator />} />
+          <Route path="/tools/resume-summary-generator" element={<ResumeSummaryGenerator />} />
+          <Route path="/tools/cover-letter-generator" element={<CoverLetterGenerator />} />
+          <Route path="/tools/cold-email-generator" element={<ColdEmailGenerator />} />
+          <Route path="/blog" element={<BlogIndex />} />
+          <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
