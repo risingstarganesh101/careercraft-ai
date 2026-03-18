@@ -1,8 +1,10 @@
 import { ReactNode, useState } from "react";
 import { Link } from "react-router-dom";
-import { Copy, RefreshCw, Loader2, Check } from "lucide-react";
+import { Copy, RefreshCw, Loader2, Check, Zap } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import UpgradeModal from "@/components/UpgradeModal";
+import { canGenerate, recordGeneration, getRemainingGenerations, DAILY_GENERATION_LIMIT } from "@/hooks/useUsageLimit";
 
 interface ToolLayoutProps {
   title: string;
@@ -18,11 +20,33 @@ interface ToolLayoutProps {
 
 const ToolLayout = ({ title, subtitle, children, results, isLoading, onGenerate, onRegenerate, relatedTools, faqs }: ToolLayoutProps) => {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [remaining, setRemaining] = useState(getRemainingGenerations);
 
   const copyText = (text: string, idx: number) => {
     navigator.clipboard.writeText(text);
     setCopiedIdx(idx);
     setTimeout(() => setCopiedIdx(null), 2000);
+  };
+
+  const handleGenerate = () => {
+    if (!canGenerate()) {
+      setShowUpgrade(true);
+      return;
+    }
+    recordGeneration();
+    setRemaining(getRemainingGenerations());
+    onGenerate();
+  };
+
+  const handleRegenerate = () => {
+    if (!canGenerate()) {
+      setShowUpgrade(true);
+      return;
+    }
+    recordGeneration();
+    setRemaining(getRemainingGenerations());
+    onRegenerate();
   };
 
   return (
@@ -42,12 +66,20 @@ const ToolLayout = ({ title, subtitle, children, results, isLoading, onGenerate,
                 {children}
               </div>
               <button
-                onClick={onGenerate}
+                onClick={handleGenerate}
                 disabled={isLoading}
                 className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {isLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : "Generate"}
               </button>
+
+              {/* Usage counter */}
+              <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                <Zap className="h-3 w-3" />
+                <span>
+                  {remaining}/{DAILY_GENERATION_LIMIT} free generations remaining today
+                </span>
+              </div>
             </div>
 
             {/* Output side */}
@@ -55,7 +87,7 @@ const ToolLayout = ({ title, subtitle, children, results, isLoading, onGenerate,
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display font-semibold text-sm">Results</h3>
                 {results && (
-                  <button onClick={onRegenerate} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                  <button onClick={handleRegenerate} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                     <RefreshCw className="h-3 w-3" /> Regenerate
                   </button>
                 )}
@@ -126,6 +158,7 @@ const ToolLayout = ({ title, subtitle, children, results, isLoading, onGenerate,
         </div>
       </main>
       <Footer />
+      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} />
     </>
   );
 };
