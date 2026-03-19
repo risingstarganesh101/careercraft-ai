@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { validateInputs, checkRateLimit } from "../_shared/validate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,8 +9,22 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  if (!checkRateLimit(req).allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests. Please slow down." }), {
+      status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
-    const { role, experience, skills, industry, objective } = await req.json();
+    const body = await req.json();
+    const { valid, error, sanitized } = validateInputs(body, ["role", "experience", "skills", "industry", "objective"]);
+    if (!valid) {
+      return new Response(JSON.stringify({ error }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { role, experience, skills, industry, objective } = sanitized;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
