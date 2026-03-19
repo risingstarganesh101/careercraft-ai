@@ -5,7 +5,15 @@ import { toast } from "@/hooks/use-toast";
 let lastCallTime = 0;
 const THROTTLE_MS = 3000;
 
-export async function callAI(functionName: string, body: Record<string, unknown>): Promise<string[]> {
+// Internal tool type mapping — keeps function names opaque
+const TOOL_MAP: Record<string, string> = {
+  "generate-resume-bullets": "rb",
+  "generate-resume-summary": "rs",
+  "generate-cover-letter": "cl",
+  "generate-cold-email": "ce",
+};
+
+export async function callAI(toolName: string, body: Record<string, unknown>): Promise<string[]> {
   // Throttle rapid requests
   const now = Date.now();
   const elapsed = now - lastCallTime;
@@ -16,7 +24,12 @@ export async function callAI(functionName: string, body: Record<string, unknown>
   }
   lastCallTime = Date.now();
 
-  const { data, error } = await supabase.functions.invoke(functionName, { body });
+  const toolType = TOOL_MAP[toolName];
+  if (!toolType) throw new Error("Unknown tool");
+
+  const { data, error } = await supabase.functions.invoke("ct-process", {
+    body: { ...body, t: toolType },
+  });
 
   if (error) {
     const msg = error.message || "Something went wrong";
