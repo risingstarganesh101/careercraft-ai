@@ -62,12 +62,27 @@ export type Database = {
         }
         Relationships: []
       }
+      global_daily_usage: {
+        Row: {
+          request_count: number
+          usage_date: string
+        }
+        Insert: {
+          request_count?: number
+          usage_date?: string
+        }
+        Update: {
+          request_count?: number
+          usage_date?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_daily_usage: { Args: { max_limit?: number }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

@@ -1,13 +1,4 @@
 project_id = "jdhtavxktaxrrvvhxroe"
 
-[functions.generate-resume-bullets]
-verify_jwt = false
-
-[functions.generate-resume-summary]
-verify_jwt = false
-
-[functions.generate-cover-letter]
-verify_jwt = false
-
-[functions.generate-cold-email]
+[functions.ct-process]
 verify_jwt = false
