@@ -39,6 +39,7 @@ const App = () => (
             <Route path="/tools/resume-summary-generator" element={<ResumeSummaryGenerator />} />
             <Route path="/tools/cover-letter-generator" element={<CoverLetterGenerator />} />
             <Route path="/tools/cold-email-generator" element={<ColdEmailGenerator />} />
+            <Route path="/tools/ats-analyzer" element={FEATURE_ATS_ENABLED ? <ATSAnalyzer /> : <NotFound />} />
             <Route path="/blog" element={<BlogIndex />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
             <Route path="/about" element={<About />} />
