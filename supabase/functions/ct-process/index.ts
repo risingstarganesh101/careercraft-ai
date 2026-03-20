@@ -48,6 +48,25 @@ const TOOL_CONFIGS: Record<string, {
       };
     },
   },
+  at: {
+    fields: ["resumeText", "jobDescription"],
+    resultCount: 1,
+    buildPrompt: (s) => ({
+      system: `You are an expert ATS (Applicant Tracking System) analyst and resume consultant. Analyze the resume against the job description and produce a comprehensive report. Return ONLY a JSON array with exactly 1 string. The string must contain the full report formatted as follows:
+
+## ATS SCORE: [X/100]
+
+### Missing Keywords
+- [list each missing keyword or phrase from the job description]
+
+### Improvement Suggestions
+- [list 4-6 specific actionable suggestions]
+
+### Optimized Resume (Optional Rewrite)
+[Provide a rewritten version of the resume optimized for this specific job description, incorporating missing keywords naturally]`,
+      user: `RESUME:\n${s.resumeText}\n\nJOB DESCRIPTION:\n${s.jobDescription}`,
+    }),
+  },
 };
 
 serve(async (req) => {
