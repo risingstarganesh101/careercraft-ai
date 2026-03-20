@@ -11,6 +11,7 @@ const TOOL_MAP: Record<string, string> = {
   "generate-resume-summary": "rs",
   "generate-cover-letter": "cl",
   "generate-cold-email": "ce",
+  "ats-analyzer": "at",
 };
 
 export async function callAI(toolName: string, body: Record<string, unknown>): Promise<string[]> {

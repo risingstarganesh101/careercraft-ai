@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FileText, AlignLeft, Mail, Send } from "lucide-react";
+import { FileText, AlignLeft, Mail, Send, Search } from "lucide-react";
+import { FEATURE_ATS_ENABLED } from "@/config/featureFlags";
 
-const tools = [
+const allTools = [
   {
     title: "Resume Bullet Generator",
     description: "Turn simple job tasks into powerful, professional resume bullet points.",
@@ -31,7 +32,17 @@ const tools = [
     href: "/tools/cold-email-generator",
     color: "text-accent",
   },
+  {
+    title: "Resume ATS Analyzer",
+    description: "Check how well your resume matches a job description and get your ATS score.",
+    icon: Search,
+    href: "/tools/ats-analyzer",
+    color: "text-primary",
+    flag: "ats" as const,
+  },
 ];
+
+const tools = allTools.filter((t) => !("flag" in t) || (t.flag === "ats" && FEATURE_ATS_ENABLED));
 
 const ToolsGrid = () => (
   <section className="bg-section py-20">

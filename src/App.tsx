@@ -4,12 +4,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
+import { FEATURE_ATS_ENABLED } from "@/config/featureFlags";
 import Index from "./pages/Index";
 import ToolsIndex from "./pages/ToolsIndex";
 import ResumeBulletGenerator from "./pages/tools/ResumeBulletGenerator";
 import ResumeSummaryGenerator from "./pages/tools/ResumeSummaryGenerator";
 import CoverLetterGenerator from "./pages/tools/CoverLetterGenerator";
 import ColdEmailGenerator from "./pages/tools/ColdEmailGenerator";
+import ATSAnalyzer from "./pages/tools/ATSAnalyzer";
 import BlogIndex from "./pages/BlogIndex";
 import BlogPost from "./pages/BlogPost";
 import About from "./pages/About";
@@ -37,6 +39,7 @@ const App = () => (
             <Route path="/tools/resume-summary-generator" element={<ResumeSummaryGenerator />} />
             <Route path="/tools/cover-letter-generator" element={<CoverLetterGenerator />} />
             <Route path="/tools/cold-email-generator" element={<ColdEmailGenerator />} />
+            <Route path="/tools/ats-analyzer" element={FEATURE_ATS_ENABLED ? <ATSAnalyzer /> : <NotFound />} />
             <Route path="/blog" element={<BlogIndex />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
             <Route path="/about" element={<About />} />
