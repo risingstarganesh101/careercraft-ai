@@ -4,7 +4,7 @@ import { Copy, RefreshCw, Loader2, Check, Zap } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import UpgradeModal from "@/components/UpgradeModal";
-import { canGenerate, recordGeneration, getRemainingGenerations, DAILY_GENERATION_LIMIT } from "@/hooks/useUsageLimit";
+import { canGenerate, getRemainingGenerations, recordGeneration, DAILY_GENERATION_LIMIT } from "@/hooks/useUsageLimit";
 
 interface ToolLayoutProps {
   title: string;
@@ -34,9 +34,11 @@ const ToolLayout = ({ title, subtitle, children, results, isLoading, onGenerate,
       setShowUpgrade(true);
       return;
     }
-    recordGeneration();
+    recordGeneration(); // optimistic client-side decrement
     setRemaining(getRemainingGenerations());
     onGenerate();
+    // remaining will be corrected via syncRemaining() after server responds
+    setTimeout(() => setRemaining(getRemainingGenerations()), 3000);
   };
 
   const handleRegenerate = () => {
@@ -47,6 +49,7 @@ const ToolLayout = ({ title, subtitle, children, results, isLoading, onGenerate,
     recordGeneration();
     setRemaining(getRemainingGenerations());
     onRegenerate();
+    setTimeout(() => setRemaining(getRemainingGenerations()), 3000);
   };
 
   return (
