@@ -99,9 +99,9 @@ serve(async (req) => {
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       req.headers.get("cf-connecting-ip") || "unknown";
 
-    const { data: ipAllowed, error: ipError } = await supabase.rpc("check_ip_usage", { p_ip: clientIp, p_limit: 20 });
-    if (ipError || !ipAllowed) {
-      return new Response(JSON.stringify({ error: "You've reached your daily limit. Please try again tomorrow." }), {
+    const { data: remaining, error: ipError } = await supabase.rpc("check_ip_usage", { p_ip: clientIp, p_limit: 5 });
+    if (ipError || remaining === null || remaining < 0) {
+      return new Response(JSON.stringify({ error: "You've reached your daily limit. Please try again tomorrow.", remaining: 0 }), {
         status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -156,7 +156,7 @@ serve(async (req) => {
       results = content.split("\n\n").filter((l: string) => l.trim().length > 0).slice(0, config.resultCount);
     }
 
-    return new Response(JSON.stringify({ results }), {
+    return new Response(JSON.stringify({ results, remaining }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
