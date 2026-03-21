@@ -14,7 +14,12 @@ const TOOL_MAP: Record<string, string> = {
   "ats-analyzer": "at",
 };
 
-export async function callAI(toolName: string, body: Record<string, unknown>): Promise<string[]> {
+export interface AIResponse {
+  results: string[];
+  remaining: number;
+}
+
+export async function callAI(toolName: string, body: Record<string, unknown>): Promise<AIResponse> {
   // Throttle rapid requests
   const now = Date.now();
   const elapsed = now - lastCallTime;
@@ -43,5 +48,8 @@ export async function callAI(toolName: string, body: Record<string, unknown>): P
     throw new Error(data.error);
   }
 
-  return data?.results || [];
+  return {
+    results: data?.results || [],
+    remaining: typeof data?.remaining === "number" ? data.remaining : 0,
+  };
 }

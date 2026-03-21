@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ToolLayout from "@/components/ToolLayout";
 import { callAI } from "@/lib/ai";
+import { syncRemaining } from "@/hooks/useUsageLimit";
 
 const ColdEmailGenerator = () => {
   const [outreachType, setOutreachType] = useState("job");
@@ -16,7 +17,8 @@ const ColdEmailGenerator = () => {
     setIsLoading(true);
     try {
       const data = await callAI("generate-cold-email", { outreachType, role, target, message, cta });
-      setResults(data);
+      setResults(data.results);
+      syncRemaining(data.remaining);
     } catch { /* handled */ }
     setIsLoading(false);
   };

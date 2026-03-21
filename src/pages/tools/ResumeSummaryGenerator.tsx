@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ToolLayout from "@/components/ToolLayout";
 import { callAI } from "@/lib/ai";
+import { syncRemaining } from "@/hooks/useUsageLimit";
 
 const ResumeSummaryGenerator = () => {
   const [role, setRole] = useState("");
@@ -16,7 +17,8 @@ const ResumeSummaryGenerator = () => {
     setIsLoading(true);
     try {
       const data = await callAI("generate-resume-summary", { role, experience, skills, industry, objective });
-      setResults(data);
+      setResults(data.results);
+      syncRemaining(data.remaining);
     } catch { /* handled */ }
     setIsLoading(false);
   };

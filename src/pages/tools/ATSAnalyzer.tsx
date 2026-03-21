@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ToolLayout from "@/components/ToolLayout";
 import { callAI } from "@/lib/ai";
+import { syncRemaining } from "@/hooks/useUsageLimit";
 
 const ATSAnalyzer = () => {
   const [resumeText, setResumeText] = useState("");
@@ -13,7 +14,8 @@ const ATSAnalyzer = () => {
     setIsLoading(true);
     try {
       const data = await callAI("ats-analyzer", { resumeText, jobDescription });
-      setResults(data);
+      setResults(data.results);
+      syncRemaining(data.remaining);
     } catch { /* handled in callAI */ }
     setIsLoading(false);
   };
