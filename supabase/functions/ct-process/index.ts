@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { validateInputs, checkRateLimit } from "../_shared/validate.ts";
+import { validateInputs } from "../_shared/validate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,13 +72,6 @@ const TOOL_CONFIGS: Record<string, {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // Rate limit
-  if (!checkRateLimit(req).allowed) {
-    return new Response(JSON.stringify({ error: "Service is temporarily busy. Please try again later." }), {
-      status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
   try {
     const body = await req.json();
     const toolType = String(body?.t || "").trim();
@@ -98,11 +91,22 @@ serve(async (req) => {
       });
     }
 
-    // Check global daily cap
+    // DB-backed per-IP rate limit (persists across cold starts)
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("cf-connecting-ip") || "unknown";
+
+    const { data: ipAllowed, error: ipError } = await supabase.rpc("check_ip_usage", { p_ip: clientIp, p_limit: 20 });
+    if (ipError || !ipAllowed) {
+      return new Response(JSON.stringify({ error: "You've reached your daily limit. Please try again tomorrow." }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Check global daily cap
     const { data: allowed, error: rpcError } = await supabase.rpc("increment_daily_usage", { max_limit: 750 });
     if (rpcError || !allowed) {
       return new Response(JSON.stringify({ error: "Service is temporarily busy. Please try again later." }), {
