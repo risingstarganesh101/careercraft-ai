@@ -77,11 +77,34 @@ export type Database = {
         }
         Relationships: []
       }
+      ip_daily_usage: {
+        Row: {
+          ip_address: string
+          request_count: number
+          usage_date: string
+        }
+        Insert: {
+          ip_address: string
+          request_count?: number
+          usage_date?: string
+        }
+        Update: {
+          ip_address?: string
+          request_count?: number
+          usage_date?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_ip_usage: {
+        Args: { p_ip: string; p_limit?: number }
+        Returns: boolean
+      }
+      cleanup_old_ip_usage: { Args: never; Returns: undefined }
       increment_daily_usage: { Args: { max_limit?: number }; Returns: boolean }
     }
     Enums: {
