@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ToolLayout from "@/components/ToolLayout";
 import { callAI } from "@/lib/ai";
+import { syncRemaining } from "@/hooks/useUsageLimit";
 
 const ResumeBulletGenerator = () => {
   const [jobTitle, setJobTitle] = useState("");
@@ -15,7 +16,8 @@ const ResumeBulletGenerator = () => {
     setIsLoading(true);
     try {
       const data = await callAI("generate-resume-bullets", { jobTitle, task, outcome, tone });
-      setResults(data);
+      setResults(data.results);
+      syncRemaining(data.remaining);
     } catch { /* handled in callAI */ }
     setIsLoading(false);
   };
