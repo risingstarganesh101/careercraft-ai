@@ -102,7 +102,7 @@ export type Database = {
     Functions: {
       check_ip_usage: {
         Args: { p_ip: string; p_limit?: number }
-        Returns: boolean
+        Returns: number
       }
       cleanup_old_ip_usage: { Args: never; Returns: undefined }
       increment_daily_usage: { Args: { max_limit?: number }; Returns: boolean }
