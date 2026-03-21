@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 // Client-side throttle: minimum 3s between AI calls
@@ -33,12 +32,16 @@ export async function callAI(toolName: string, body: Record<string, unknown>): P
   const toolType = TOOL_MAP[toolName];
   if (!toolType) throw new Error("Unknown tool");
 
-  const { data, error } = await supabase.functions.invoke("ct-process", {
-    body: { ...body, t: toolType },
+  const response = await fetch("/api/ct-process", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, t: toolType }),
   });
 
-  if (error) {
-    const msg = error.message || "Something went wrong";
+  const data = await response.json();
+
+  if (!response.ok) {
+    const msg = data?.error || "Something went wrong";
     toast({ title: "Error", description: msg, variant: "destructive" });
     throw new Error(msg);
   }
