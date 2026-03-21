@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ToolLayout from "@/components/ToolLayout";
 import { callAI } from "@/lib/ai";
+import { syncRemaining } from "@/hooks/useUsageLimit";
 
 const CoverLetterGenerator = () => {
   const [jobTitle, setJobTitle] = useState("");
@@ -16,7 +17,8 @@ const CoverLetterGenerator = () => {
     setIsLoading(true);
     try {
       const data = await callAI("generate-cover-letter", { jobTitle, company, background, achievements, interest });
-      setResults(data);
+      setResults(data.results);
+      syncRemaining(data.remaining);
     } catch { /* handled */ }
     setIsLoading(false);
   };
