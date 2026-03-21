@@ -1,4 +1,0 @@
-project_id = "jdhtavxktaxrrvvhxroe"
-
-[functions.ct-process]
-verify_jwt = false
