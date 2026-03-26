@@ -185,6 +185,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
 
     if (!geminiResponse.ok) {
+      if (geminiResponse.status === 429) {
+  await new Promise(r => setTimeout(r, 2000));
+}
       const status = geminiResponse.status;
       console.error("Gemini API error:", status, await geminiResponse.text());
       if (status === 429) {
