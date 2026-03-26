@@ -164,37 +164,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // }
 
     // Call Gemini API
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY not configured");
-      return res.status(500).json({ error: "Server configuration error." });
-    }
+//     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+//     if (!GEMINI_API_KEY) {
+//       console.error("GEMINI_API_KEY not configured");
+//       return res.status(500).json({ error: "Server configuration error." });
+//     }
 
-    const { system, user } = config.buildPrompt(sanitized);
+//     const { system, user } = config.buildPrompt(sanitized);
 
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
-          generationConfig: { temperature: 0.7 },
-        }),
-      }
-    );
+//     const geminiResponse = await fetch(
+//       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+//       {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({
+//           contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
+//           generationConfig: { temperature: 0.7 },
+//         }),
+//       }
+//     );
 
-    let geminiResponse = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-  {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
-      generationConfig: { temperature: 0.7 }
-    })
-  }
-);
+//     let geminiResponse = await fetch(
+//   `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+//   {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify({
+//       contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
+//       generationConfig: { temperature: 0.7 }
+//     })
+//   }
+// );
 
 // Retry once if Gemini rate limited
 if (geminiResponse.status === 429) {
