@@ -149,19 +149,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (supabaseUrl && supabaseKey) {
       const supabase = createClient(supabaseUrl, supabaseKey);
 
-      // Per-IP daily limit
-      const { data: ipRemaining, error: ipError } = await supabase.rpc("check_ip_usage", { p_ip: clientIp, p_limit: 5 });
-      if (ipError || ipRemaining === null || ipRemaining < 0) {
-        return res.status(429).json({ error: "You've reached your daily limit. Please try again tomorrow.", remaining: 0 });
-      }
-      remaining = ipRemaining;
+    //   // Per-IP daily limit
+    //   const { data: ipRemaining, error: ipError } = await supabase.rpc("check_ip_usage", { p_ip: clientIp, p_limit: 5 });
+    //   if (ipError || ipRemaining === null || ipRemaining < 0) {
+    //     return res.status(429).json({ error: "You've reached your daily limit. Please try again tomorrow.", remaining: 0 });
+    //   }
+    //   remaining = ipRemaining;
 
-      // Global daily cap
-      const { data: allowed, error: rpcError } = await supabase.rpc("increment_daily_usage", { max_limit: 750 });
-      if (rpcError || !allowed) {
-        return res.status(503).json({ error: "Service is temporarily busy. Please try again later." });
-      }
-    }
+    //   // Global daily cap
+    //   const { data: allowed, error: rpcError } = await supabase.rpc("increment_daily_usage", { max_limit: 750 });
+    //   if (rpcError || !allowed) {
+    //     return res.status(503).json({ error: "Service is temporarily busy. Please try again later." });
+    //   }
+    // }
 
     // Call Gemini API
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
