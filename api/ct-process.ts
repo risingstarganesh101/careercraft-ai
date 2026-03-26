@@ -196,21 +196,73 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 //   }
 // );
 
-// Retry once if Gemini rate limited
-if (geminiResponse.status === 429) {
-  await new Promise(r => setTimeout(r, 2000));
+// // Retry once if Gemini rate limited
+// if (geminiResponse.status === 429) {
+//   await new Promise(r => setTimeout(r, 2000));
 
+//   geminiResponse = await fetch(
+//     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+//     {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({
+//         contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
+//         generationConfig: { temperature: 0.7 }
+//       })
+//     }
+//   );
+// }
+
+      let geminiResponse;
+
+try {
   geminiResponse = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `${system}\n\n${user}` }]
+          }
+        ],
         generationConfig: { temperature: 0.7 }
       })
     }
   );
+
+  // retry once if rate limited
+  if (geminiResponse.status === 429) {
+    await new Promise(r => setTimeout(r, 2000));
+
+    geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: `${system}\n\n${user}` }]
+            }
+          ],
+          generationConfig: { temperature: 0.7 }
+        })
+      }
+    );
+  }
+
+} catch (err) {
+  console.error("Gemini request failed:", err);
+  return res.status(500).json({ error: "AI request failed." });
+}
+
+if (!geminiResponse.ok) {
+  console.error("Gemini API error:", geminiResponse.status, await geminiResponse.text());
+  return res.status(503).json({ error: "AI service temporarily unavailable." });
 }
 
 if (!geminiResponse.ok) {
