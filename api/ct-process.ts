@@ -184,32 +184,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     );
 
-    if (!geminiResponse.ok) {
-      if (geminiResponse.status === 429) {
-  await new Promise(r => setTimeout(r, 2000));
-}
-      const status = geminiResponse.status;
-      console.error("Gemini API error:", status, await geminiResponse.text());
-      if (status === 429) {
-        return res.status(503).json({ error: "Service is temporarily busy. Please try again later." });
-      }
-      return res.status(500).json({ error: "AI processing failed. Please try again." });
-    }
-
-    const geminiData = await geminiResponse.json();
-    const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
-
-    let results: string[];
-    try {
-      const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      results = JSON.parse(cleaned);
-    } catch {
-      results = content.split("\n\n").filter((l: string) => l.trim().length > 0).slice(0, config.resultCount);
-    }
-
-    return res.status(200).json({ results, remaining });
-  } catch (e) {
-    console.error("Processing error:", e);
-    return res.status(500).json({ error: "Something went wrong. Please try again." });
+    let geminiResponse = await fetch(
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
+      generationConfig: { temperature: 0.7 }
+    })
   }
+);
+
+// Retry once if Gemini rate limited
+if (geminiResponse.status === 429) {
+  await new Promise(r => setTimeout(r, 2000));
+
+  geminiResponse = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
+        generationConfig: { temperature: 0.7 }
+      })
+    }
+  );
+}
+
+if (!geminiResponse.ok) {
+  console.error("Gemini API error:", geminiResponse.status, await geminiResponse.text());
+  return res.status(500).json({ error: "AI service temporarily unavailable." });
 }
