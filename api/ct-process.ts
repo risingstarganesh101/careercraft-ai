@@ -108,7 +108,7 @@ function checkMemoryRateLimit(ip: string): boolean {
 
 // ── Gemini API call with retry ──────────────────────────────────────────────
 async function callGemini(apiKey: string, system: string, user: string): Promise<Response> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
   const payload = {
     contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
     generationConfig: { temperature: 0.7 },
