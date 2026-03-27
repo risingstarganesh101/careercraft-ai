@@ -106,9 +106,33 @@ function checkMemoryRateLimit(ip: string): boolean {
   return entry.count <= RATE_LIMIT;
 }
 
+// ── Gemini API call with retry ──────────────────────────────────────────────
+async function callGemini(apiKey: string, system: string, user: string): Promise<Response> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const payload = {
+    contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
+    generationConfig: { temperature: 0.7 },
+  };
+  const opts: RequestInit = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  };
+
+  let response = await fetch(url, opts);
+
+  // Retry once on 429
+  if (response.status === 429) {
+    console.warn("Gemini 429 — retrying in 2s…");
+    await new Promise((r) => setTimeout(r, 2000));
+    response = await fetch(url, opts);
+  }
+
+  return response;
+}
+
 // ── Handler ─────────────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "content-type");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -125,147 +149,126 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Invalid request." });
     }
 
-    // Validate & sanitize
     const { valid, error, sanitized } = validateInputs(body, config.fields);
     if (!valid) {
       return res.status(400).json({ error });
     }
 
-    // Get client IP
+    // Client IP
     const forwarded = req.headers["x-forwarded-for"];
-    const clientIp = (typeof forwarded === "string" ? forwarded.split(",")[0]?.trim() : Array.isArray(forwarded) ? forwarded[0] : null) || "unknown";
+    const clientIp =
+      (typeof forwarded === "string"
+        ? forwarded.split(",")[0]?.trim()
+        : Array.isArray(forwarded)
+          ? forwarded[0]
+          : null) || "unknown";
 
     // In-memory rate limit
     if (!checkMemoryRateLimit(clientIp)) {
       return res.status(429).json({ error: "Too many requests. Please slow down.", remaining: 0 });
     }
 
-    // DB-backed per-IP daily limit & global cap via Supabase
+    // ── Optional Supabase rate limiting (never crashes the request) ─────────
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    let remaining = 4; // default if DB unavailable
+    let remaining = 4;
 
     if (supabaseUrl && supabaseKey) {
-      const supabase = createClient(supabaseUrl, supabaseKey);
+      try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
-    //   // Per-IP daily limit
-    //   const { data: ipRemaining, error: ipError } = await supabase.rpc("check_ip_usage", { p_ip: clientIp, p_limit: 5 });
-    //   if (ipError || ipRemaining === null || ipRemaining < 0) {
-    //     return res.status(429).json({ error: "You've reached your daily limit. Please try again tomorrow.", remaining: 0 });
-    //   }
-    //   remaining = ipRemaining;
-
-    //   // Global daily cap
-    //   const { data: allowed, error: rpcError } = await supabase.rpc("increment_daily_usage", { max_limit: 750 });
-    //   if (rpcError || !allowed) {
-    //     return res.status(503).json({ error: "Service is temporarily busy. Please try again later." });
-    //   }
-    // }
-
-    // Call Gemini API
-//     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-//     if (!GEMINI_API_KEY) {
-//       console.error("GEMINI_API_KEY not configured");
-//       return res.status(500).json({ error: "Server configuration error." });
-//     }
-
-//     const { system, user } = config.buildPrompt(sanitized);
-
-//     const geminiResponse = await fetch(
-//       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-//       {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({
-//           contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
-//           generationConfig: { temperature: 0.7 },
-//         }),
-//       }
-//     );
-
-//     let geminiResponse = await fetch(
-//   `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-//   {
-//     method: "POST",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify({
-//       contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
-//       generationConfig: { temperature: 0.7 }
-//     })
-//   }
-// );
-
-// // Retry once if Gemini rate limited
-// if (geminiResponse.status === 429) {
-//   await new Promise(r => setTimeout(r, 2000));
-
-//   geminiResponse = await fetch(
-//     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-//     {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({
-//         contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
-//         generationConfig: { temperature: 0.7 }
-//       })
-//     }
-//   );
-// }
-
-      let geminiResponse;
-
-try {
-  geminiResponse = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: `${system}\n\n${user}` }]
-          }
-        ],
-        generationConfig: { temperature: 0.7 }
-      })
-    }
-  );
-
-  // retry once if rate limited
-  if (geminiResponse.status === 429) {
-    await new Promise(r => setTimeout(r, 2000));
-
-    geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: `${system}\n\n${user}` }]
+        // Per-IP daily limit
+        try {
+          const { data: ipRemaining, error: ipErr } = await supabase.rpc("check_ip_usage", {
+            p_ip: clientIp,
+            p_limit: 5,
+          });
+          if (!ipErr && typeof ipRemaining === "number") {
+            remaining = ipRemaining;
+            if (remaining < 0) {
+              return res.status(429).json({
+                error: "You've reached your daily limit. Please try again tomorrow.",
+                remaining: 0,
+              });
             }
-          ],
-          generationConfig: { temperature: 0.7 }
-        })
+          } else {
+            console.warn("check_ip_usage failed (non-fatal):", ipErr?.message);
+          }
+        } catch (e) {
+          console.warn("check_ip_usage exception (non-fatal):", e);
+        }
+
+        // Global daily cap
+        try {
+          const { data: allowed, error: capErr } = await supabase.rpc("increment_daily_usage", {
+            max_limit: 750,
+          });
+          if (capErr) {
+            console.warn("increment_daily_usage failed (non-fatal):", capErr.message);
+          } else if (allowed === false) {
+            return res.status(429).json({
+              error: "Service has reached its daily capacity. Please try again tomorrow.",
+              remaining: 0,
+            });
+          }
+        } catch (e) {
+          console.warn("increment_daily_usage exception (non-fatal):", e);
+        }
+      } catch (e) {
+        console.warn("Supabase client init failed (non-fatal):", e);
       }
-    );
+    }
+
+    // ── Gemini API call ─────────────────────────────────────────────────────
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      console.error("GEMINI_API_KEY is not set in environment variables");
+      return res.status(500).json({ error: "Server configuration error." });
+    }
+
+    const { system, user } = config.buildPrompt(sanitized);
+
+    let geminiResponse: Response;
+    try {
+      geminiResponse = await callGemini(GEMINI_API_KEY, system, user);
+    } catch (err) {
+      console.error("Gemini network error:", err);
+      return res.status(502).json({ error: "Could not reach AI service. Please try again." });
+    }
+
+    if (!geminiResponse.ok) {
+      const errBody = await geminiResponse.text().catch(() => "");
+      console.error(`Gemini API ${geminiResponse.status}:`, errBody);
+
+      if (geminiResponse.status === 429) {
+        return res.status(429).json({ error: "AI service is busy. Please try again in a moment." });
+      }
+      return res.status(502).json({ error: "AI service returned an error. Please try again." });
+    }
+
+    // ── Parse response ──────────────────────────────────────────────────────
+    const resultData = await geminiResponse.json();
+    const rawText = resultData?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!rawText) {
+      console.error("Gemini returned empty/malformed response:", JSON.stringify(resultData).slice(0, 500));
+      return res.status(502).json({ error: "AI returned an empty response. Please try again." });
+    }
+
+    let results: string[];
+    try {
+      // Strip markdown code fences if present
+      const cleaned = rawText.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
+      const parsed = JSON.parse(cleaned);
+      results = Array.isArray(parsed) ? parsed.map(String) : [rawText];
+    } catch {
+      // Fallback: return raw text as single result
+      results = [rawText];
+    }
+
+    return res.status(200).json({ results, remaining });
+  } catch (err) {
+    console.error("Unhandled error in /api/ct-process:", err);
+    return res.status(500).json({ error: "An internal server error occurred." });
   }
-
-} catch (err) {
-  console.error("Gemini request failed:", err);
-  return res.status(500).json({ error: "AI request failed." });
-}
-
-if (!geminiResponse.ok) {
-  console.error("Gemini API error:", geminiResponse.status, await geminiResponse.text());
-  return res.status(503).json({ error: "AI service temporarily unavailable." });
-}
-
-if (!geminiResponse.ok) {
-  console.error("Gemini API error:", geminiResponse.status, await geminiResponse.text());
-  return res.status(500).json({ error: "AI service temporarily unavailable." });
 }
