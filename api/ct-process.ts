@@ -175,11 +175,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const supabase = createClient(supabaseUrl, supabaseKey);
 
         // Per-IP daily limit
-        try {
-          const { data: ipRemaining, error: ipErr } = await supabase.rpc("check_ip_usage", {
-            p_ip: clientIp,
-            p_limit: 5,
-          });
+        // try {
+        //   const { data: ipRemaining, error: ipErr } = await supabase.rpc("check_ip_usage", {
+        //     p_ip: clientIp,
+        //     p_limit: 5,
+        //   });
           if (!ipErr && typeof ipRemaining === "number") {
             remaining = ipRemaining;
             if (remaining < 0) {
@@ -196,10 +196,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Global daily cap
-        try {
-          const { data: allowed, error: capErr } = await supabase.rpc("increment_daily_usage", {
-            max_limit: 750,
-          });
+        // try {
+        //   const { data: allowed, error: capErr } = await supabase.rpc("increment_daily_usage", {
+        //     max_limit: 750,
+        //   });
           if (capErr) {
             console.warn("increment_daily_usage failed (non-fatal):", capErr.message);
           } else if (allowed === false) {
