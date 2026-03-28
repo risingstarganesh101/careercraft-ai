@@ -1,3 +1,6 @@
+Here's your complete updated `api/ct-process.ts` — ready to copy-paste:
+
+```ts
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 
@@ -11,8 +14,8 @@ function sanitize(value: unknown): string {
   return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").slice(0, MAX_FIELD_LENGTH);
 }
 
-function validateInputs(body: Record<string, unknown>, fields: string[]) {
-  const sanitized: Record<string, string> = {};
+function validateInputs(body: Record, fields: string[]) {
+  const sanitized: Record = {};
   let totalLength = 0;
   for (const field of fields) {
     const clean = sanitize(body[field]);
@@ -29,9 +32,7 @@ function validateInputs(body: Record<string, unknown>, fields: string[]) {
 }
 
 // ── Tool configs ────────────────────────────────────────────────────────────
-const TOOL_CONFIGS: Record<string, {
-  fields: string[];
-  buildPrompt: (s: Record<string, string>) => { system: string; user: string };
+const TOOL_CONFIGS: Record) => { system: string; user: string };
   resultCount: number;
 }> = {
   rb: {
@@ -91,7 +92,7 @@ const TOOL_CONFIGS: Record<string, {
 };
 
 // ── In-memory rate limiter (per serverless instance) ─────────────────────────
-const ipCounts = new Map<string, { count: number; resetAt: number }>();
+const ipCounts = new Map();
 const RATE_LIMIT = 20;
 const RATE_WINDOW_MS = 60_000;
 
@@ -106,29 +107,26 @@ function checkMemoryRateLimit(ip: string): boolean {
   return entry.count <= RATE_LIMIT;
 }
 
-// ── Gemini API call with retry ──────────────────────────────────────────────
-async function callGemini(apiKey: string, system: string, user: string): Promise<Response> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`;
+// ── Groq API call ───────────────────────────────────────────────────────────
+async function callGroq(apiKey: string, system: string, user: string): Promise {
+  const url = "https://api.groq.com/openai/v1/chat/completions";
   const payload = {
-    contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
-    generationConfig: { temperature: 0.7 },
+    model: "llama3-8b-8192",
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    temperature: 0.7,
   };
-  const opts: RequestInit = {
+
+  return fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(payload),
-  };
-
-  let response = await fetch(url, opts);
-
-  // Retry once on 429
-  if (response.status === 429) {
-    console.warn("Gemini 429 — retrying in 2s…");
-    await new Promise((r) => setTimeout(r, 2000));
-    response = await fetch(url, opts);
-  }
-
-  return response;
+  });
 }
 
 // ── Handler ─────────────────────────────────────────────────────────────────
@@ -219,39 +217,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // ── Gemini API call ─────────────────────────────────────────────────────
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY is not set in environment variables");
+    // ── Groq API call ───────────────────────────────────────────────────────
+    const GROQ_API_KEY = process.env.GROQ_API_KEY;
+    if (!GROQ_API_KEY) {
+      console.error("GROQ_API_KEY is not set in environment variables");
       return res.status(500).json({ error: "Server configuration error." });
     }
 
     const { system, user } = config.buildPrompt(sanitized);
 
-    let geminiResponse: Response;
+    let groqResponse: Response;
     try {
-      geminiResponse = await callGemini(GEMINI_API_KEY, system, user);
+      groqResponse = await callGroq(GROQ_API_KEY, system, user);
     } catch (err) {
-      console.error("Gemini network error:", err);
+      console.error("Groq network error:", err);
       return res.status(502).json({ error: "Could not reach AI service. Please try again." });
     }
 
-    if (!geminiResponse.ok) {
-      const errBody = await geminiResponse.text().catch(() => "");
-      console.error(`Gemini API ${geminiResponse.status}:`, errBody);
+    if (!groqResponse.ok) {
+      const errBody = await groqResponse.text().catch(() => "");
+      console.error(`Groq API ${groqResponse.status}:`, errBody);
 
-      if (geminiResponse.status === 429) {
+      if (groqResponse.status === 429) {
         return res.status(429).json({ error: "AI service is busy. Please try again in a moment." });
       }
       return res.status(502).json({ error: "AI service returned an error. Please try again." });
     }
 
     // ── Parse response ──────────────────────────────────────────────────────
-    const resultData = await geminiResponse.json();
-    const rawText = resultData?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const resultData = await groqResponse.json();
+    const rawText = resultData?.choices?.[0]?.message?.content;
 
     if (!rawText) {
-      console.error("Gemini returned empty/malformed response:", JSON.stringify(resultData).slice(0, 500));
+      console.error("Groq returned empty/malformed response:", JSON.stringify(resultData).slice(0, 500));
       return res.status(502).json({ error: "AI returned an empty response. Please try again." });
     }
 
@@ -272,3 +270,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "An internal server error occurred." });
   }
 }
+```
+
+That's the full file — just add `GROQ_API_KEY` to your Vercel environment variables and redeploy.
+
+Test all tools end-to-end
+Add production error monitoring
