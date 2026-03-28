@@ -244,22 +244,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ── Parse response ──────────────────────────────────────────────────────
+    // const resultData = await groqResponse.json();
+    // const rawText = resultData?.choices?.[0]?.message?.content;
+
+
     const resultData = await groqResponse.json();
-    const rawText = resultData?.choices?.[0]?.message?.content;
+    console.log("Groq response:", JSON.stringify(resultData));
+    const rawText =
+      resultData?.choices?.[0]?.message?.content ||
+      resultData?.choices?.[0]?.text ||
+      "";  
 
     if (!rawText) {
       console.error("Groq returned empty/malformed response:", JSON.stringify(resultData).slice(0, 500));
       return res.status(502).json({ error: "AI returned an empty response. Please try again." });
     }
 
-    let results: string[];
+    let results: string[] = [];
     try {
-      // Strip markdown code fences if present
-      const cleaned = rawText.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
+      const cleaned = rawText
+        .replace(/^```(?:json)?\s*\n?/i, "")
+        .replace(/\n?```\s*$/i, "")
+        .trim();
+      
       const parsed = JSON.parse(cleaned);
-      results = Array.isArray(parsed) ? parsed.map(String) : [rawText];
+      if (Array.isArray(parsed)) {
+        results = parsed.map(String);
+      } else {
+        results = [cleaned];
+      }
     } catch {
-      // Fallback: return raw text as single result
       results = [rawText];
     }
 
