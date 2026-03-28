@@ -1,6 +1,3 @@
-Here's your complete updated `api/ct-process.ts` — ready to copy-paste:
-
-```ts
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 
@@ -14,8 +11,8 @@ function sanitize(value: unknown): string {
   return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").slice(0, MAX_FIELD_LENGTH);
 }
 
-function validateInputs(body: Record, fields: string[]) {
-  const sanitized: Record = {};
+function validateInputs(body: Record<string, unknown>, fields: string[]) {
+  const sanitized: Record<string, string> = {};
   let totalLength = 0;
   for (const field of fields) {
     const clean = sanitize(body[field]);
@@ -32,7 +29,9 @@ function validateInputs(body: Record, fields: string[]) {
 }
 
 // ── Tool configs ────────────────────────────────────────────────────────────
-const TOOL_CONFIGS: Record) => { system: string; user: string };
+const TOOL_CONFIGS: Record<string, {
+  fields: string[];
+  buildPrompt: (s: Record<string, string>) => { system: string; user: string };
   resultCount: number;
 }> = {
   rb: {
@@ -92,7 +91,7 @@ const TOOL_CONFIGS: Record) => { system: string; user: string };
 };
 
 // ── In-memory rate limiter (per serverless instance) ─────────────────────────
-const ipCounts = new Map();
+const ipCounts = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 20;
 const RATE_WINDOW_MS = 60_000;
 
@@ -108,7 +107,7 @@ function checkMemoryRateLimit(ip: string): boolean {
 }
 
 // ── Groq API call ───────────────────────────────────────────────────────────
-async function callGroq(apiKey: string, system: string, user: string): Promise {
+async function callGroq(apiKey: string, system: string, user: string): Promise<Response> {
   const url = "https://api.groq.com/openai/v1/chat/completions";
   const payload = {
     model: "llama3-8b-8192",
@@ -270,9 +269,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "An internal server error occurred." });
   }
 }
-```
-
-That's the full file — just add `GROQ_API_KEY` to your Vercel environment variables and redeploy.
-
-Test all tools end-to-end
-Add production error monitoring
