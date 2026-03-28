@@ -39,7 +39,7 @@ async function callGroq(system: string, user: string) {
           { role: "system", content: system },
           { role: "user", content: user },
         ],
-        temperature: 0.7,
+        temperature: 0.6,
       }),
     }
   );
@@ -68,12 +68,20 @@ function parseResults(text: string) {
     const parsed = JSON.parse(cleaned);
 
     if (Array.isArray(parsed)) {
-      return parsed.map(String);
+      return parsed.map((item: any) => {
+        if (typeof item === "string") return item;
+        if (item.bullet) return item.bullet;
+        if (item.text) return item.text;
+        return JSON.stringify(item);
+      });
     }
 
     return [cleaned];
   } catch {
-    return [text];
+    return text
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .map((line) => line.replace(/^[-•\d.]\s*/, ""));
   }
 }
 
@@ -85,13 +93,9 @@ export default async function handler(
   res.setHeader("Access-Control-Allow-Headers", "content-type");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "POST") {
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST")
     return res.status(405).json({ error: "Method not allowed" });
-  }
 
   try {
     const body = req.body;
@@ -114,37 +118,106 @@ export default async function handler(
     let user = "";
 
     if (type === "rb") {
-      system =
-        "You are a professional resume writer. Return exactly 3 resume bullet points as JSON array.";
-      user = `Job Title: ${body.jobTitle}\nTask: ${body.task}\nOutcome: ${body.outcome}`;
+      system = `
+You are a senior resume writer with 15 years of hiring experience.
+
+Generate EXACTLY 3 strong resume bullet points.
+
+Rules:
+- Start each bullet with a powerful action verb
+- 1–2 lines maximum
+- Include measurable impact when possible
+- Do NOT include explanations
+- Return ONLY a JSON array of strings
+
+Example:
+[
+"Led social media campaigns that increased revenue by 15% through targeted audience engagement.",
+"Analyzed marketing performance data to optimize campaigns and boost ROI by 20%.",
+"Collaborated with cross-functional teams to launch growth initiatives improving customer acquisition."
+]
+`;
+
+      user = `Job Title: ${body.jobTitle}
+Task: ${body.task}
+Outcome: ${body.outcome}`;
     }
 
     if (type === "rs") {
-      system =
-        "You are a professional resume writer. Return 2 resume summaries as JSON array.";
-      user = `Role: ${body.role}\nExperience: ${body.experience}\nSkills: ${body.skills}`;
+      system = `
+You are an expert resume writer.
+
+Write 2 powerful resume summary paragraphs.
+
+Rules:
+- 2–3 sentences each
+- Professional and concise
+- Highlight strengths and achievements
+- Return ONLY a JSON array with 2 strings.
+`;
+
+      user = `Role: ${body.role}
+Experience: ${body.experience}
+Skills: ${body.skills}`;
     }
 
     if (type === "cl") {
-      system =
-        "You are a professional cover letter writer. Return a complete cover letter as JSON array with one item.";
-      user = `Job Title: ${body.jobTitle}\nCompany: ${body.company}\nBackground: ${body.background}`;
+      system = `
+You are a professional cover letter writer.
+
+Write a tailored cover letter.
+
+Rules:
+- 3–4 paragraphs
+- Professional tone
+- Personalized to the job
+- Return ONLY a JSON array with one string.
+`;
+
+      user = `Job Title: ${body.jobTitle}
+Company: ${body.company}
+Background: ${body.background}`;
     }
 
     if (type === "ce") {
-      system =
-        "You are a professional email copywriter. Return 3 cold email variations as JSON array.";
-      user = `Role: ${body.role}\nTarget: ${body.target}\nMessage: ${body.message}`;
+      system = `
+You are a professional email copywriter.
+
+Generate 3 cold email variations.
+
+Rules:
+- Short and persuasive
+- Include a clear CTA
+- Return ONLY a JSON array of 3 strings.
+`;
+
+      user = `Role: ${body.role}
+Target: ${body.target}
+Message: ${body.message}`;
     }
 
     if (type === "at") {
-      system =
-        "You are an ATS expert. Analyze resume vs job description and return report as JSON array with one item.";
-      user = `Resume:\n${body.resumeText}\n\nJob Description:\n${body.jobDescription}`;
+      system = `
+You are an ATS resume analyzer.
+
+Analyze the resume against the job description.
+
+Return ONLY a JSON array with one string containing:
+
+ATS Score
+Missing Keywords
+Improvement Suggestions
+Optimized Resume Version
+`;
+
+      user = `Resume:
+${body.resumeText}
+
+Job Description:
+${body.jobDescription}`;
     }
 
     const aiText = await callGroq(system, user);
-
     const results = parseResults(aiText);
 
     return res.status(200).json({
